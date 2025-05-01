@@ -19,16 +19,21 @@ const WORKER_URL = `${window.location.protocol}//${window.location.hostname}:585
 // In this example, the room ID is hard-coded. You can set this however you like though.
 const roomId = "test-room";
 
-import valleyDataUrl from "./public/valley.svg?base64";
-import mountainDataUrl from "./public/mountain.svg?base64";
-import mountainHalfDataUrl from "./public/mountain-half.svg?base64";
-import mountainFullDataUrl from "./public/mountain-full.svg?base64";
+import valleyDataUrl from "./assets/valley.svg?base64";
+import mountainDataUrl from "./assets/mountain.svg?base64";
+import mountainHalfDataUrl from "./assets/mountain-half.svg?base64";
+import mountainFullDataUrl from "./assets/mountain-full.svg?base64";
+
+import valley from "./assets/valley.svg";
+import mountain from "./assets/mountain.svg";
+import mountainHalf from "./assets/mountain-half.svg";
+import mountainFull from "./assets/mountain-full.svg";
 
 const MOUNTAINS = [
-  { value: "valley", image: "valley.svg", dataUrl: valleyDataUrl },
-  { value: "mountain", image: "mountain.svg", dataUrl: mountainDataUrl },
-  { value: "mountain-half", image: "mountain-half.svg", dataUrl: mountainHalfDataUrl },
-  { value: "mountain-full", image: "mountain-full.svg", dataUrl: mountainFullDataUrl },
+  { value: "valley", image: valley, dataUrl: valleyDataUrl },
+  { value: "mountain", image: mountain, dataUrl: mountainDataUrl },
+  { value: "mountain-half", image: mountainHalf, dataUrl: mountainHalfDataUrl },
+  { value: "mountain-full", image: mountainFull, dataUrl: mountainFullDataUrl },
   { value: "none", image: "", dataUrl: "" },
 ] as const;
 
@@ -49,7 +54,7 @@ const addMountainPseudoElements = (editor: Editor) => {
   for (const [id, state] of Object.entries(idsToMountainState)) {
     css += `
 			[data-shape-id="${id}"]::after {
-				background-image: url('/${mountainsToImages[state]}');
+				background-image: url('${mountainsToImages[state]}');
 				content: ' ';
 				background-size: contain;
 				background-position: center center;
