@@ -227,7 +227,14 @@ function App() {
             if (
               Object.values(thing.changes.updated).some(
                 ([from, to]) => from.meta.mountain !== to.meta.mountain
-              ) || (Object.values(thing.changes.added).some((newThing) => newThing.meta.mountain))
+              ) || (
+                Object.values(thing.changes.added).some((newThing) => newThing.meta.mountain)
+              ) || (
+                Object.values(thing.changes.updated).some(
+                  ([from, to]) => 'currentPageId' in from && 'currentPageId' in to &&
+                    from.currentPageId !== to.currentPageId
+                )
+              )
             ) {
               addMountainPseudoElements(editor);
             }
