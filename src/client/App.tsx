@@ -226,7 +226,6 @@ function App() {
                 ([from, to]) => from.meta.mountain !== to.meta.mountain
               ) || (Object.values(thing.changes.added).some((newThing) => newThing.meta.mountain))
             ) {
-              console.log("remote mountain change");
               addMountainPseudoElements(editor);
             }
           });
