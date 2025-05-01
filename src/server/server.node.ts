@@ -5,6 +5,8 @@ import type { RawData } from "ws";
 import { loadAsset, storeAsset } from "./assets";
 import { makeOrLoadRoom } from "./rooms";
 import { unfurl } from "./unfurl";
+import fastifyStatic from "@fastify/static";
+import path from "path";
 
 const PORT = 5858;
 
@@ -13,6 +15,8 @@ const PORT = 5858;
 const app = fastify();
 app.register(websocketPlugin);
 app.register(cors, { origin: "*" });
+
+app.register(fastifyStatic, { root: path.resolve(process.cwd(), "./src/client/dist") });
 
 app.register(async (app) => {
   // This is the main entrypoint for the multiplayer sync
