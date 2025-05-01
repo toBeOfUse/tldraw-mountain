@@ -99,6 +99,8 @@ TextShapeUtil.prototype.toSvg = function (shape, ctx) {
   );
 };
 
+// TODO: adjust handle geometry to allow for dragging the mountain itself around
+
 // [1]
 const ContextToolbarComponent = track(() => {
   const editor = useEditor();
