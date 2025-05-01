@@ -5,6 +5,7 @@ import {
   TLAssetStore,
   TLBookmarkAsset,
   TLEditorComponents,
+  TextShapeUtil,
   Tldraw,
   TldrawUiIcon,
   getHashForString,
@@ -18,11 +19,17 @@ const WORKER_URL = `${window.location.protocol}//${window.location.hostname}:585
 // In this example, the room ID is hard-coded. You can set this however you like though.
 const roomId = "test-room";
 
+import valleyDataUrl from "./public/valley.svg?base64";
+import mountainDataUrl from "./public/mountain.svg?base64";
+import mountainHalfDataUrl from "./public/mountain-half.svg?base64";
+import mountainFullDataUrl from "./public/mountain-full.svg?base64";
+
 const MOUNTAINS = [
-  { value: "mountain", image: "mountain.webp" },
-  { value: "mountain-half", image: "mountain.webp" },
-  { value: "mountain-full", image: "mountain.webp" },
-  { value: "none", image: "" },
+  { value: "valley", image: "valley.svg", dataUrl: valleyDataUrl },
+  { value: "mountain", image: "mountain.svg", dataUrl: mountainDataUrl },
+  { value: "mountain-half", image: "mountain-half.svg", dataUrl: mountainHalfDataUrl },
+  { value: "mountain-full", image: "mountain-full.svg", dataUrl: mountainFullDataUrl },
+  { value: "none", image: "", dataUrl: "" },
 ] as const;
 
 type MountainState = (typeof MOUNTAINS)[number]["value"];
@@ -47,17 +54,43 @@ const addMountainPseudoElements = (editor: Editor) => {
 				background-size: contain;
 				background-position: center center;
 				background-repeat: no-repeat;
-				position:relative;
-				z-index:100000;
+				position: absolute;
+				z-index: 100000;
 				left: -50px;
-				top: -40px;
+				top: 50%;
+        transform: translateY(-55%);
 				display: block;
 				width: 40px;
-				height: 40px;
+				height: 50px;
 			}
 		`;
   }
   document.getElementById("terrible-hack")!.innerHTML = css;
+};
+
+const originalToSvg = TextShapeUtil.prototype.toSvg;
+TextShapeUtil.prototype.toSvg = function (shape, ctx) {
+  const base = originalToSvg.call(this, shape, ctx);
+  const imageUrl = MOUNTAINS.find((m) => m.value === shape.meta.mountain)?.dataUrl;
+
+  // find the offset to center the image vertically with the text. you want to
+  // move it up by half the amount that it's taller than the text by
+  const geometry = this.getGeometry(shape, {});
+  const imageHeight = 50;
+  const offset = -((imageHeight - geometry.getBounds().height) / 2);
+  return (
+    <g>
+      {!!imageUrl && (
+        <image
+          href={`data:image/svg+xml;base64,${imageUrl}`}
+          transform={`translate(-50 ${offset})`}
+          height="50"
+          width="40"
+        />
+      )}
+      {base}
+    </g>
+  );
 };
 
 // [1]
@@ -115,7 +148,7 @@ const ContextToolbarComponent = track(() => {
                 justifyContent: "center",
                 height: 32,
                 width: 32,
-                background: isActive ? "gray" : "transparent",
+                background: isActive ? "lightgray" : "transparent",
               }}
               onClick={() => {
                 editor.updateShapes(
@@ -131,7 +164,7 @@ const ContextToolbarComponent = track(() => {
               }}
             >
               {image ? (
-                <img style={{ height: 30, width: 30 }} src="/mountain.webp" />
+                <img style={{ height: 30, width: 30, objectFit: "contain" }} src={image} />
               ) : (
                 <TldrawUiIcon icon="cross-circle" />
               )}
@@ -154,10 +187,6 @@ function App() {
     uri: `${WORKER_URL}/connect/${roomId}`,
     // ...and how to handle static assets like images & videos
     assets: multiplayerAssets,
-
-    // custom stuff
-    // shapeUtils: useMemo(() => [TextShapeUtil, ...defaultShapeUtils], []),
-    // bindingUtils: useMemo(() => [...customBindingUtils, ...defaultBindingUtils], []),
   });
 
   return (
@@ -184,7 +213,6 @@ function App() {
           });
         }}
         components={components}
-        // shapeUtils={[TextShapeUtil]}
       />
     </div>
   );
