@@ -7,6 +7,8 @@ import { makeOrLoadRoom } from "./rooms";
 import { unfurl } from "./unfurl";
 import fastifyStatic from "@fastify/static";
 import path from "path";
+import isSvg from 'is-svg';
+import imageType from "image-type";
 
 const PORT = 5858;
 
@@ -64,8 +66,17 @@ app.register(async (app) => {
   app.get("/uploads/:id", async (req, res) => {
     const id = (req.params as any).id as string;
     const data = await loadAsset(id);
-    if (id.endsWith(".svg")) {
+    if (isSvg(data.toString('utf-8'))) {
+      // for some reason, browsers really want MIME types for SVGs specifically
+      // (unlike JPEGs or whatever)
       res.header("Content-Type", "image/svg+xml")
+    } else {
+      const type = await imageType(data);
+      if (type && type.mime) {
+        res.header("Content-Type", type.mime);
+      } else {
+        console.warn("mime type for asset "+id+" not known")
+      }
     }
     res.send(data);
   });
