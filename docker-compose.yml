@@ -1,0 +1,12 @@
+version: '0.5'
+services:
+  mountain:
+    build: .
+    command: pnpm serve
+    volumes:
+      - ./.assets:/usr/src/app/.assets
+      - ./.rooms:/usr/src/app/.rooms
+    ports:
+      - "5858:4848"
+    environment:
+      NODE_ENV: 'production'
