@@ -80,6 +80,9 @@ TextShapeUtil.prototype.toSvg = function (shape, ctx) {
   const base = originalToSvg.call(this, shape, ctx);
   const imageUrl = MOUNTAINS.find((m) => m.value === shape.meta.mountain)?.dataUrl;
 
+  // TODO: widths & heights are hard-coded independently all over the place,
+  // here and in addMountainPseudoElements
+
   // find the offset to center the image vertically with the text. you want to
   // move it up by half the amount that it's taller than the text by
   const geometry = this.getGeometry(shape, {});
