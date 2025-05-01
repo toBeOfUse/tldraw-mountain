@@ -64,6 +64,9 @@ app.register(async (app) => {
   app.get("/uploads/:id", async (req, res) => {
     const id = (req.params as any).id as string;
     const data = await loadAsset(id);
+    if (id.endsWith(".svg")) {
+      res.header("Content-Type", "image/svg+xml")
+    }
     res.send(data);
   });
 
