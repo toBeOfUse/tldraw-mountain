@@ -27,4 +27,8 @@ export default defineConfig(() => ({
   optimizeDeps: {
     exclude: ["@tldraw/assets"],
   },
+  build: {
+    // don't inline svgs! it messes up css urls
+    assetsInlineLimit: 0,
+  },
 }));
