@@ -5,3 +5,7 @@ body {
 	font-family: 'Inter', sans-serif;
 	overscroll-behavior: none;
 }
+
+.tl-rich-text a {
+	color: rgb(19, 0, 112) !important;
+}
