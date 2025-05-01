@@ -13,7 +13,7 @@ import {
   useEditor,
 } from "tldraw";
 
-const WORKER_URL = `http://localhost:5858`;
+const WORKER_URL = `${window.location.protocol}//${window.location.hostname}:5858`;
 
 // In this example, the room ID is hard-coded. You can set this however you like though.
 const roomId = "test-room";
@@ -172,6 +172,16 @@ function App() {
           // when the editor is ready, we need to register out bookmark unfurling service
           editor.registerExternalAssetHandler("url", unfurlBookmarkUrl);
           addMountainPseudoElements(editor);
+          editor.store.listen((thing) => {
+            if (
+              Object.values(thing.changes.updated).some(
+                ([from, to]) => from.meta.mountain !== to.meta.mountain
+              )
+            ) {
+              console.log("remote mountain change");
+              addMountainPseudoElements(editor);
+            }
+          });
         }}
         components={components}
         // shapeUtils={[TextShapeUtil]}
