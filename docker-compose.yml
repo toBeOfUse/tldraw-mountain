@@ -7,6 +7,6 @@ services:
       - ./.assets:/usr/src/app/.assets
       - ./.rooms:/usr/src/app/.rooms
     ports:
-      - "5858:4848"
+      - "5858:5858"
     environment:
       NODE_ENV: 'production'
