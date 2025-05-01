@@ -15,7 +15,7 @@ import {
 } from "tldraw";
 
 const WORKER_URL = `${window.location.protocol}//${window.location.hostname}${
-  window.location.protocol === "http" ? ":5858" : ""
+  window.location.protocol === "http:" ? ":5858" : ""
 }`;
 
 // In this example, the room ID is hard-coded. You can set this however you like though.
