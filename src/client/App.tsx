@@ -14,9 +14,8 @@ import {
   useEditor,
 } from "tldraw";
 
-const WORKER_URL = `${window.location.protocol}//${window.location.hostname}${
-  window.location.protocol === "http:" ? ":5858" : ""
-}`;
+const WORKER_URL = `${window.location.protocol}//${window.location.hostname}${window.location.protocol === "http:" ? ":5858" : ""
+  }`;
 
 // In this example, the room ID is hard-coded. You can set this however you like though.
 const roomId = "test-room";
@@ -167,7 +166,8 @@ const ContextToolbarComponent = track(() => {
                     },
                   }))
                 );
-                addMountainPseudoElements(editor);
+                // this triggers the listen() listener on the store that's added
+                // in Tldraw's onMount
               }}
             >
               {image ? (
@@ -212,7 +212,7 @@ function App() {
             if (
               Object.values(thing.changes.updated).some(
                 ([from, to]) => from.meta.mountain !== to.meta.mountain
-              )
+              ) || (Object.values(thing.changes.added).some((newThing) => newThing.meta.mountain))
             ) {
               console.log("remote mountain change");
               addMountainPseudoElements(editor);
