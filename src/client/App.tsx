@@ -1,6 +1,7 @@
 import { useSync } from "@tldraw/sync";
 import {
   AssetRecordType,
+  DefaultColorThemePalette,
   Editor,
   TLAssetStore,
   TLBookmarkAsset,
@@ -98,6 +99,15 @@ TextShapeUtil.prototype.toSvg = function (shape, ctx) {
     </g>
   );
 };
+
+// repurpose this palette option to match the continents in our bg
+DefaultColorThemePalette.lightMode["light-violet"].solid = '#e7e7e7';
+DefaultColorThemePalette.lightMode["light-violet"].fill = '#e7e7e7';
+DefaultColorThemePalette.lightMode["light-violet"].semi = '#e7e7e7';
+DefaultColorThemePalette.darkMode['light-violet'].solid = '#e7e7e7';
+DefaultColorThemePalette.darkMode['light-violet'].fill = '#e7e7e7';
+DefaultColorThemePalette.darkMode['light-violet'].semi = '#e7e7e7';
+
 
 // TODO: adjust handle geometry to allow for dragging the mountain itself around
 
