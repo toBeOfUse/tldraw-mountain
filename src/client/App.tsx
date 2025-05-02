@@ -14,9 +14,11 @@ import {
   uniqueId,
   useEditor,
 } from "tldraw";
+import { useEffect, useState } from "react";
 
-const WORKER_URL = `${window.location.protocol}//${window.location.hostname}${window.location.protocol === "http:" ? ":5858" : ""
-  }`;
+const WORKER_URL = `${window.location.protocol}//${window.location.hostname}${
+  window.location.protocol === "http:" ? ":5858" : ""
+}`;
 
 // In this example, the room ID is hard-coded. You can set this however you like though.
 const roomId = "test-room";
@@ -104,13 +106,12 @@ TextShapeUtil.prototype.toSvg = function (shape, ctx) {
 };
 
 // repurpose this palette option to match the continents in our bg
-DefaultColorThemePalette.lightMode["light-violet"].solid = '#e7e7e7';
-DefaultColorThemePalette.lightMode["light-violet"].fill = '#e7e7e7';
-DefaultColorThemePalette.lightMode["light-violet"].semi = '#e7e7e7';
-DefaultColorThemePalette.darkMode['light-violet'].solid = '#e7e7e7';
-DefaultColorThemePalette.darkMode['light-violet'].fill = '#e7e7e7';
-DefaultColorThemePalette.darkMode['light-violet'].semi = '#e7e7e7';
-
+DefaultColorThemePalette.lightMode["light-violet"].solid = "#e7e7e7";
+DefaultColorThemePalette.lightMode["light-violet"].fill = "#e7e7e7";
+DefaultColorThemePalette.lightMode["light-violet"].semi = "#e7e7e7";
+DefaultColorThemePalette.darkMode["light-violet"].solid = "#e7e7e7";
+DefaultColorThemePalette.darkMode["light-violet"].fill = "#e7e7e7";
+DefaultColorThemePalette.darkMode["light-violet"].semi = "#e7e7e7";
 
 // TODO: adjust handle geometry to allow for dragging the mountain itself around
 
@@ -202,7 +203,7 @@ const components: TLEditorComponents = {
   InFrontOfTheCanvas: ContextToolbarComponent,
 };
 
-function App() {
+function TLDrawCanvas() {
   // Create a store connected to multiplayer.
   const store = useSync({
     // We need to know the websocket's URI...
@@ -227,13 +228,13 @@ function App() {
             if (
               Object.values(thing.changes.updated).some(
                 ([from, to]) => from.meta.mountain !== to.meta.mountain
-              ) || (
-                Object.values(thing.changes.added).some((newThing) => newThing.meta.mountain)
-              ) || (
-                Object.values(thing.changes.updated).some(
-                  ([from, to]) => 'currentPageId' in from && 'currentPageId' in to &&
-                    from.currentPageId !== to.currentPageId
-                )
+              ) ||
+              Object.values(thing.changes.added).some((newThing) => newThing.meta.mountain) ||
+              Object.values(thing.changes.updated).some(
+                ([from, to]) =>
+                  "currentPageId" in from &&
+                  "currentPageId" in to &&
+                  from.currentPageId !== to.currentPageId
               )
             ) {
               addMountainPseudoElements(editor);
@@ -244,6 +245,35 @@ function App() {
       />
     </div>
   );
+}
+
+function App() {
+  const [amIn, setAmIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch(`${WORKER_URL}/isauthenticated`).then(async (res) => {
+      const result = await res.text();
+      if (result === "yes") {
+        setAmIn(true);
+      } else {
+        setAmIn(false);
+      }
+    });
+  }, []);
+
+  if (amIn) {
+    return <TLDrawCanvas />;
+  } else if (amIn === null) {
+    return <p>Authenticating...</p>;
+  } else {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      <div>
+        {!!params.get("error") && <p>Error: {params.get("error")}</p>}
+        <a href={`${WORKER_URL}/login/github`}>Login with Github</a>
+      </div>
+    );
+  }
 }
 
 // How does our server handle assets like images and videos?

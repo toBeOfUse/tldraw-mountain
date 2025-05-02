@@ -1,24 +1,113 @@
 import cors from "@fastify/cors";
 import websocketPlugin from "@fastify/websocket";
-import fastify from "fastify";
+import fastify, { FastifyRequest } from "fastify";
 import type { RawData } from "ws";
 import { loadAsset, storeAsset } from "./assets";
 import { makeOrLoadRoom } from "./rooms";
 import { unfurl } from "./unfurl";
 import fastifyStatic from "@fastify/static";
 import path from "path";
-import isSvg from 'is-svg';
+import isSvg from "is-svg";
 import imageType from "image-type";
+import oauth from "@fastify/oauth2";
+import crypto from "crypto";
+import { execSync } from "child_process";
+import secrets from "./secrets";
 
 const PORT = 5858;
+// in dev mode, all requests are automatically authenticated. in non-dev mode,
+// this server serves the result of a vite build (since vite is assumed to not
+// be running)
+const DEV = process.argv.includes("--dev");
 
-// For this example we use a simple fastify server with the official websocket plugin
-// To keep things simple we're skipping normal production concerns like rate limiting and input validation.
+// simple in-memory session cookie storage
+const SESSION_COOKIE_NAME = "mountain-session";
+const sessionCookies: string[] = [];
+
+// For this example we use a simple fastify server with the official websocket
+// plugin. To keep things simple we're skipping normal production concerns like
+// rate limiting and input validation.
+
 const app = fastify();
 app.register(websocketPlugin);
 app.register(cors, { origin: "*" });
 
-app.register(fastifyStatic, { root: path.resolve(process.cwd(), "./src/client/dist") });
+if (!DEV) {
+  console.log("starting in production mode");
+
+  // serve the last vite build
+  app.register(fastifyStatic, { root: path.resolve(process.cwd(), "./src/client/dist") });
+
+  // allow github logins
+  app.register(oauth, {
+    name: "githubOauth",
+    credentials: {
+      client: { id: secrets.githubClientId, secret: secrets.githubClientSecret },
+      auth: oauth.GITHUB_CONFIGURATION,
+    },
+    startRedirectPath: "/login/github",
+    callbackUri(req) {
+      const host = req.protocol === "http" ? `http://localhost:${PORT}` : `https://${req.hostname}`;
+      return `${host}/login/github/callback`;
+    },
+  });
+
+  app.get("/login/github/callback", async (req, reply) => {
+    const { token } = await app.githubOauth.getAccessTokenFromAuthorizationCodeFlow(req);
+
+    if (!token?.access_token) {
+      reply.redirect(`/?error=Github credentials non-functional.`);
+      return;
+    }
+
+    const userRes = await fetch("https://api.github.com/user", {
+      headers: { Authorization: `Bearer ${token.access_token}` },
+    });
+    const user = await userRes.json();
+    if (secrets.githubAllowedUsers.includes(user.login)) {
+      const secureCookie = crypto.randomBytes(32).toString("hex");
+      sessionCookies.push(secureCookie);
+      reply.setCookie(SESSION_COOKIE_NAME, secureCookie, {
+        httpOnly: true,
+        secure: "auto",
+        path: "/",
+        sameSite: "strict",
+      });
+      reply.redirect("/");
+      return;
+    } else {
+      reply.redirect(`/?error=User ${user.login} not found.`);
+    }
+  });
+
+  app.addHook("preValidation", async (req, reply) => {
+    if (req.ws && !isAuthenticated(req)) {
+      console.log("no session cookie");
+      reply.code(403).send("No");
+    }
+  });
+} else {
+  console.log("starting in dev mode; authentication disabled");
+}
+
+function isAuthenticated(req: FastifyRequest) {
+  if (DEV) {
+    return true;
+  }
+  const sessionCookie = req.cookies[SESSION_COOKIE_NAME]!;
+  if (!sessionCookie || !sessionCookies.includes(sessionCookie)) {
+    return false;
+  }
+  return true;
+}
+
+app.get("/isauthenticated", (req, reply) => {
+  if (isAuthenticated(req)) {
+    reply.send("yes");
+  } else {
+    reply.send("no");
+  }
+});
 
 app.register(async (app) => {
   // This is the main entrypoint for the multiplayer sync
@@ -66,16 +155,16 @@ app.register(async (app) => {
   app.get("/uploads/:id", async (req, res) => {
     const id = (req.params as any).id as string;
     const data = await loadAsset(id);
-    if (isSvg(data.toString('utf-8'))) {
+    if (isSvg(data.toString("utf-8"))) {
       // for some reason, browsers really want MIME types for SVGs specifically
       // (unlike JPEGs or whatever)
-      res.header("Content-Type", "image/svg+xml")
+      res.header("Content-Type", "image/svg+xml");
     } else {
       const type = await imageType(data);
       if (type && type.mime) {
         res.header("Content-Type", type.mime);
       } else {
-        console.warn("mime type for asset "+id+" not known")
+        console.warn("mime type for asset " + id + " not known");
       }
     }
     res.send(data);

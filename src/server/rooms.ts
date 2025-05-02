@@ -83,7 +83,7 @@ setInterval(() => {
 			saveSnapshot(roomState.id, roomState.room.getCurrentSnapshot())
 		}
 		if (roomState.room.isClosed()) {
-			console.log('deleting room', roomState.id)
+			console.log('closing room', roomState.id)
 			rooms.delete(roomState.id)
 		}
 	}
