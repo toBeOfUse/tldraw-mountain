@@ -1,10 +1,24 @@
-# tldraw sync, simple Node/Bun server example
+# tldraw sync: mountains
 
-This is a simple example of a backend for [tldraw sync](https://tldraw.dev/docs/sync) with a Node or Bun server.
+This is a simple example of a backend for [tldraw sync](https://tldraw.dev/docs/sync) with a Node.js Fastify server.
 
-Run `yarn dev-node` or `yarn dev-bun` in this folder to start the server + client.
+For dev mode, install dependencies and run `pnpm dev`.
 
-For a production-ready example specific to Cloudflare, see /templates/sync-cloudflare.
+For production mode, run `pnpm build` and then `pnpm serve`. For this mode, secrets must be added at src/server/secrets.ts:
+
+```ts
+const secrets = {
+  githubClientId: "",
+  githubClientSecret: "",
+  githubAllowedUsers: ["[username]", "[username]"],
+};
+
+export default secrets;
+```
+
+Using the credentials from a Github app that's set up like this:
+
+![](github-app.png)
 
 ## License
 
