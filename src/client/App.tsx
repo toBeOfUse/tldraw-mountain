@@ -2,13 +2,17 @@ import { useSync } from "@tldraw/sync";
 import {
   AssetRecordType,
   DefaultColorThemePalette,
+  DefaultMainMenu,
+  DefaultMainMenuContent,
   Editor,
   TLAssetStore,
   TLBookmarkAsset,
-  TLEditorComponents,
+  TLComponents,
   TextShapeUtil,
   Tldraw,
   TldrawUiIcon,
+  TldrawUiMenuGroup,
+  TldrawUiMenuItem,
   getHashForString,
   track,
   uniqueId,
@@ -199,8 +203,31 @@ const ContextToolbarComponent = track(() => {
   );
 });
 
-const components: TLEditorComponents = {
+function MainMenuWithLogout() {
+  return (
+    <DefaultMainMenu>
+      <DefaultMainMenuContent />
+      <div>
+        <TldrawUiMenuGroup id="example">
+          <TldrawUiMenuItem
+            id="logout"
+            label="Log out"
+            readonlyOk
+            onSelect={() => {
+              fetch("/logout", { method: "POST" }).then(() => {
+                window.location.reload();
+              });
+            }}
+          />
+        </TldrawUiMenuGroup>
+      </div>
+    </DefaultMainMenu>
+  );
+}
+
+const components: TLComponents = {
   InFrontOfTheCanvas: ContextToolbarComponent,
+  MainMenu: MainMenuWithLogout,
 };
 
 function TLDrawCanvas() {

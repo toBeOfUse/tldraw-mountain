@@ -22,7 +22,7 @@ const DEV = process.argv.includes("--dev");
 
 // simple in-memory session cookie storage
 const SESSION_COOKIE_NAME = "mountain-session";
-const sessionCookies: string[] = [];
+let sessionCookies: string[] = [];
 
 // For this example we use a simple fastify server with the official websocket
 // plugin. To keep things simple we're skipping normal production concerns like
@@ -80,9 +80,15 @@ if (!DEV) {
     }
   });
 
+  app.post("/logout", (req, res) => {
+    const cookieToDelete = getSessionCookie(req);
+    sessionCookies = sessionCookies.filter((cookie) => cookie != cookieToDelete);
+    return res.send("done");
+  });
+
   app.addHook("preValidation", async (req, reply) => {
     if (req.ws && !isAuthenticated(req)) {
-      console.log("no session cookie");
+      console.warn("unauthenticated req made it to websocket");
       reply.code(403).send("No");
     }
   });
@@ -90,11 +96,15 @@ if (!DEV) {
   console.log("starting in dev mode; authentication disabled");
 }
 
+function getSessionCookie(req: FastifyRequest) {
+  return req.cookies[SESSION_COOKIE_NAME] || "";
+}
+
 function isAuthenticated(req: FastifyRequest) {
   if (DEV) {
     return true;
   }
-  const sessionCookie = req.cookies[SESSION_COOKIE_NAME]!;
+  const sessionCookie = getSessionCookie(req);
   if (!sessionCookie || !sessionCookies.includes(sessionCookie)) {
     return false;
   }
