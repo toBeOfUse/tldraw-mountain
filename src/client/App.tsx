@@ -203,34 +203,7 @@ const ContextToolbarComponent = track(() => {
   );
 });
 
-function MainMenuWithLogout() {
-  return (
-    <DefaultMainMenu>
-      <DefaultMainMenuContent />
-      <div>
-        <TldrawUiMenuGroup id="example">
-          <TldrawUiMenuItem
-            id="logout"
-            label="Log out"
-            readonlyOk
-            onSelect={() => {
-              fetch("/logout", { method: "POST" }).then(() => {
-                window.location.reload();
-              });
-            }}
-          />
-        </TldrawUiMenuGroup>
-      </div>
-    </DefaultMainMenu>
-  );
-}
-
-const components: TLComponents = {
-  InFrontOfTheCanvas: ContextToolbarComponent,
-  MainMenu: MainMenuWithLogout,
-};
-
-function TLDrawCanvas() {
+function TLDrawCanvas(props: { user: string }) {
   // Create a store connected to multiplayer.
   const store = useSync({
     // We need to know the websocket's URI...
@@ -238,6 +211,44 @@ function TLDrawCanvas() {
     // ...and how to handle static assets like images & videos
     assets: multiplayerAssets,
   });
+
+  function MainMenuWithLogout() {
+    return (
+      <DefaultMainMenu>
+        <div>
+          <TldrawUiMenuGroup id="example">
+            <TldrawUiMenuItem
+              id="current-user"
+              label={`Welcome, ${props.user}!`}
+              readonlyOk
+              noClose
+              onSelect={() => {}}
+            />
+          </TldrawUiMenuGroup>
+        </div>
+        <DefaultMainMenuContent />
+        <div>
+          <TldrawUiMenuGroup id="example">
+            <TldrawUiMenuItem
+              id="logout"
+              label="Log out"
+              readonlyOk
+              onSelect={() => {
+                fetch(`${WORKER_URL}/logout`, { method: "POST" }).then(() => {
+                  window.location.reload();
+                });
+              }}
+            />
+          </TldrawUiMenuGroup>
+        </div>
+      </DefaultMainMenu>
+    );
+  }
+
+  const components: TLComponents = {
+    InFrontOfTheCanvas: ContextToolbarComponent,
+    MainMenu: MainMenuWithLogout,
+  };
 
   return (
     <div style={{ position: "fixed", inset: 0 }}>
@@ -275,22 +286,24 @@ function TLDrawCanvas() {
 }
 
 function App() {
-  const [amIn, setAmIn] = useState<boolean | null>(null);
+  // null means this is still loading; false means authentication failed; string
+  // is the username of the current user if authentication succeeded
+  const [user, setUser] = useState<string | false | null>(null);
 
   useEffect(() => {
     fetch(`${WORKER_URL}/isauthenticated`).then(async (res) => {
-      const result = await res.text();
-      if (result === "yes") {
-        setAmIn(true);
+      const result: { success: boolean; user: string } = await res.json();
+      if (result.success) {
+        setUser(result.user);
       } else {
-        setAmIn(false);
+        setUser(false);
       }
     });
   }, []);
 
-  if (amIn) {
-    return <TLDrawCanvas />;
-  } else if (amIn === null) {
+  if (user) {
+    return <TLDrawCanvas user={user} />;
+  } else if (user === null) {
     return <p>Authenticating...</p>;
   } else {
     const params = new URLSearchParams(window.location.search);

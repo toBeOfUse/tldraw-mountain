@@ -11,7 +11,6 @@ import isSvg from "is-svg";
 import imageType from "image-type";
 import oauth from "@fastify/oauth2";
 import crypto from "crypto";
-import { execSync } from "child_process";
 import secrets from "./secrets";
 
 const PORT = 5858;
@@ -20,9 +19,10 @@ const PORT = 5858;
 // be running)
 const DEV = process.argv.includes("--dev");
 
-// simple in-memory session cookie storage
 const SESSION_COOKIE_NAME = "mountain-session";
-let sessionCookies: string[] = [];
+// simple in-memory session cookie storage. maps session cookies to github
+// usernames
+const sessionCookies = new Map<string, string>();
 
 // For this example we use a simple fastify server with the official websocket
 // plugin. To keep things simple we're skipping normal production concerns like
@@ -66,7 +66,7 @@ if (!DEV) {
     const user = await userRes.json();
     if (secrets.githubAllowedUsers.includes(user.login)) {
       const secureCookie = crypto.randomBytes(32).toString("hex");
-      sessionCookies.push(secureCookie);
+      sessionCookies.set(secureCookie, user.login);
       reply.setCookie(SESSION_COOKIE_NAME, secureCookie, {
         httpOnly: true,
         secure: "auto",
@@ -82,12 +82,12 @@ if (!DEV) {
 
   app.post("/logout", (req, res) => {
     const cookieToDelete = getSessionCookie(req);
-    sessionCookies = sessionCookies.filter((cookie) => cookie != cookieToDelete);
+    sessionCookies.delete(cookieToDelete);
     return res.send("done");
   });
 
   app.addHook("preValidation", async (req, reply) => {
-    if (req.ws && !isAuthenticated(req)) {
+    if (req.ws && getCurrentUser(req) === null) {
       console.warn("unauthenticated req made it to websocket");
       reply.code(403).send("No");
     }
@@ -100,23 +100,20 @@ function getSessionCookie(req: FastifyRequest) {
   return req.cookies[SESSION_COOKIE_NAME] || "";
 }
 
-function isAuthenticated(req: FastifyRequest) {
+function getCurrentUser(req: FastifyRequest) {
   if (DEV) {
-    return true;
+    return "dev-mode";
   }
   const sessionCookie = getSessionCookie(req);
-  if (!sessionCookie || !sessionCookies.includes(sessionCookie)) {
-    return false;
+  if (!sessionCookie || !sessionCookies.has(sessionCookie)) {
+    return null;
   }
-  return true;
+  return sessionCookies.get(sessionCookie)!;
 }
 
 app.get("/isauthenticated", (req, reply) => {
-  if (isAuthenticated(req)) {
-    reply.send("yes");
-  } else {
-    reply.send("no");
-  }
+  const user = getCurrentUser(req);
+  reply.send(JSON.stringify({ user, success: user !== null }));
 });
 
 app.register(async (app) => {
