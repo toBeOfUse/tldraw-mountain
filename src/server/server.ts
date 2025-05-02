@@ -28,7 +28,7 @@ const sessionCookies: string[] = [];
 // plugin. To keep things simple we're skipping normal production concerns like
 // rate limiting and input validation.
 
-const app = fastify();
+const app = fastify({ trustProxy: true });
 app.register(websocketPlugin);
 app.register(cors, { origin: "*" });
 
