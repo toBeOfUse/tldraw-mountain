@@ -6,9 +6,7 @@ import {
   TLPointerEventInfo,
   track,
   TLUiComponents,
-  useTools,
   DefaultToolbarContent,
-  useIsToolSelected,
   DefaultToolbar,
   TldrawUiMenuItem,
   TLUiOverrides,
@@ -19,6 +17,7 @@ import {
   DefaultContextMenu,
   TldrawUiMenuGroup,
   DefaultContextMenuContent,
+  ToolbarItem,
 } from "tldraw";
 
 const commentInProgress = atom<null | {
@@ -30,7 +29,7 @@ const commentInProgress = atom<null | {
 }>("commentInProgress", null);
 
 export class CommentTool extends StateNode {
-  static override id = "comment-tool";
+  static override id = "comment";
 
   override onPointerDown(info: TLPointerEventInfo) {
     if (!commentInProgress.get()) {
@@ -313,20 +312,18 @@ export const ContextMenuWithCommentEdit = track((props: TLUiContextMenuProps) =>
   );
 });
 
-export const ToolbarWithCommentTool: TLUiComponents["Toolbar"] = (props) => {
-  const tools = useTools();
-  const isCommentSelected = useIsToolSelected(tools["comment"]);
+export const ToolbarWithCommentTool: TLUiComponents["Toolbar"] = track((props) => {
   // take apart the DefaultToolbarContent component. illegal in 13 countries
   // and disallowed under the geneva conventions, but it works
   const defaultTools = DefaultToolbarContent().props.children;
   return (
     <DefaultToolbar {...props}>
       {defaultTools.slice(0, 3)}
-      <TldrawUiMenuItem {...tools["comment"]} isSelected={isCommentSelected} />
+      <ToolbarItem tool="comment" />
       {defaultTools.slice(4)}
     </DefaultToolbar>
   );
-};
+});
 
 export const commentToolbarOverrides: TLUiOverrides = {
   tools(editor, tools, helpers) {
@@ -337,7 +334,7 @@ export const commentToolbarOverrides: TLUiOverrides = {
       kbd: "c",
       onSelect: () => {
         // Whatever you want to happen when the tool is selected.
-        editor.setCurrentTool("comment-tool");
+        editor.setCurrentTool("comment");
         editor.setCursor({ type: "cross" });
       },
     };
