@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 import {
   atom,
   StateNode,
@@ -13,6 +14,11 @@ import {
   TLUiOverrides,
   useEditor,
   uniqueId,
+  TLEventInfo,
+  TLUiContextMenuProps,
+  DefaultContextMenu,
+  TldrawUiMenuGroup,
+  DefaultContextMenuContent,
 } from "tldraw";
 
 const commentInProgress = atom<null | { pageX: number; pageY: number }>("commentInProgress", null);
@@ -27,6 +33,8 @@ export class CommentTool extends StateNode {
     }
   }
 }
+
+const openComments = atom("openComments", [] as string[]);
 
 export const CommentEntry = track(() => {
   const editor = useEditor();
@@ -48,13 +56,14 @@ export const CommentEntry = track(() => {
       return;
     }
     const currentPage = editor.getCurrentPage();
+    const newCommentId = uniqueId();
     editor.updatePage({
       id: currentPage.id,
       meta: {
         comments: [
           ...((currentPage.meta.comments as any[]) || []),
           {
-            id: uniqueId(),
+            id: newCommentId,
             // matches the horizontally centered display coordinate(s)
             pageX: pageCoordinates.pageX,
             pageY: pageCoordinates.pageY,
@@ -64,7 +73,7 @@ export const CommentEntry = track(() => {
         ],
       },
     });
-    console.log("page", editor.getCurrentPage());
+    openComments.set([...openComments.get(), newCommentId]);
     reset();
   };
 
@@ -80,13 +89,12 @@ export const CommentEntry = track(() => {
         pointerEvents: "all",
         top: viewportCoordinates.y,
         left: viewportCoordinates.x,
-        width: 200,
-        height: 150,
         display: "flex",
         justifyContent: "center",
         alignItems: "flex-end",
         flexDirection: "column",
         gap: 2,
+        fontFamily: '"tldraw_draw", sans-serif',
       }}
       onPointerDown={(e) => e.stopPropagation()}
     >
@@ -101,24 +109,35 @@ export const CommentEntry = track(() => {
           height: "100%",
         }}
       >
-        <textarea
+        <TextareaAutosize
+          minRows={1}
+          maxRows={5}
+          value={commentText}
           ref={(value) => {
             // stupid hack, but it won't focus right away for some reason,
             // including with the autoFocus prop
             setTimeout(() => value?.focus(), 100);
           }}
-          style={{ width: "100%", height: "100%", resize: "none" }}
-          value={commentText}
+          style={{ resize: "none", width: 175 }}
           onChange={(e) => setCommentText(e.target.value)}
+          onKeyDown={(event) => {
+            if (event.ctrlKey && event.key === "Enter") {
+              save();
+            } else if (event.key === "Escape") {
+              reset();
+            }
+          }}
         />
       </div>
       <div style={{ display: "flex", gap: 3 }}>
-        <button onClick={save}>Save</button>
         <button onClick={reset}>Cancel</button>
+        <button onClick={save}>Save</button>
       </div>
     </div>
   );
 });
+
+const commentTargetedByRightClick = atom("commentTargetedByRightClick", "");
 
 export const CommentDisplay = track(() => {
   const editor = useEditor();
@@ -131,29 +150,109 @@ export const CommentDisplay = track(() => {
     author: string;
   }[];
 
+  useEffect(() => {
+    const closeAll = (event: TLEventInfo) => {
+      if (event.type === "pointer" && event.name === "pointer_down") {
+        openComments.set([]);
+      }
+    };
+    // this is meant to trigger when the bg is clicked
+    editor.on("event", closeAll);
+    return () => {
+      editor.off("event", closeAll);
+    };
+  }, []);
+
   return comments.map((comment) => {
     const screenCoords = editor.pageToViewport({ x: comment.pageX, y: comment.pageY });
-
+    const isThisOpen = openComments.get().includes(comment.id);
     return (
       <div
         key={comment.id}
+        className="custom-comment"
         style={{
           position: "absolute",
-          pointerEvents: "none",
+          background: "#f1f1f1",
+          cursor: "pointer",
           top: screenCoords.y,
           left: screenCoords.x,
           display: "flex",
           justifyContent: "center",
-          alignItems: "flex-end",
+          alignItems: "center",
           flexDirection: "column",
           gap: 2,
+          borderRadius: 10,
+          width: isThisOpen ? undefined : 20,
+          height: isThisOpen ? undefined : 20,
+          fontSize: isThisOpen ? undefined : 16,
+          border: "1px solid darkgray",
+          fontFamily: '"tldraw_draw", sans-serif',
         }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          // allegedly, this ignores right clicks
+          if (e.pointerType !== "mouse" || e.button === 0) {
+            if (openComments.get().includes(comment.id)) {
+              openComments.set([...openComments.get().filter((id) => id !== comment.id)]);
+            } else {
+              openComments.set([...openComments.get(), comment.id]);
+            }
+          } else if (e.pointerType === "mouse") {
+            commentTargetedByRightClick.set(comment.id);
+            editor.once("event", (event) => {
+              console.log(event);
+              if (event.name === "pointer_up") {
+                commentTargetedByRightClick.set("");
+              }
+            });
+          }
+        }}
       >
-        {comment.text} - {comment.author}
+        {isThisOpen ? (
+          <div style={{ padding: "2px 4px" }}>
+            <p style={{ margin: "2px 0", fontWeight: "bold" }}>{comment.author}</p>
+            <p style={{ margin: 0, whiteSpace: "pre" }}>{comment.text}</p>
+          </div>
+        ) : (
+          comment.author.slice(0, 1).toUpperCase()
+        )}
       </div>
     );
   });
+});
+
+export const ContextMenuWithCommentDelete = track((props: TLUiContextMenuProps) => {
+  const commentIdToDelete = commentTargetedByRightClick.get();
+  const editor = useEditor();
+
+  return (
+    <DefaultContextMenu {...props}>
+      {!!commentIdToDelete && (
+        <TldrawUiMenuGroup id="delete-comment">
+          <div>
+            <TldrawUiMenuItem
+              id="delete-comment-item"
+              label="Delete comment"
+              icon="trash"
+              onSelect={() => {
+                const currentPage = editor.getCurrentPage();
+                editor.updatePage({
+                  id: currentPage.id,
+                  meta: {
+                    comments: ((currentPage.meta.comments as any[]) || []).filter(
+                      (comment) => comment.id != commentIdToDelete
+                    ),
+                  },
+                });
+                commentTargetedByRightClick.set("");
+              }}
+            />
+          </div>
+        </TldrawUiMenuGroup>
+      )}
+      <DefaultContextMenuContent />
+    </DefaultContextMenu>
+  );
 });
 
 export const ToolbarWithCommentTool: TLUiComponents["Toolbar"] = (props) => {
@@ -175,7 +274,7 @@ export const commentToolbarOverrides: TLUiOverrides = {
   tools(editor, tools, helpers) {
     tools.comment = {
       id: "comment",
-      icon: "question-mark",
+      icon: "plus",
       label: "tools.comment",
       kbd: "c",
       onSelect: () => {
