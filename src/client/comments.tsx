@@ -243,9 +243,9 @@ export const CommentDisplay = track(() => {
         }}
       >
         {isThisOpen ? (
-          <div style={{ padding: "2px 4px" }}>
+          <div style={{ padding: "2px 4px", width: "max-content", maxWidth: 300 }}>
             <p style={{ margin: "2px 0", fontWeight: "bold" }}>{comment.author}</p>
-            <p style={{ margin: 0, whiteSpace: "pre" }}>{comment.text}</p>
+            <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{comment.text}</p>
           </div>
         ) : (
           comment.author.slice(0, 1).toUpperCase()
