@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   atom,
   StateNode,
@@ -11,29 +11,65 @@ import {
   DefaultToolbar,
   TldrawUiMenuItem,
   TLUiOverrides,
+  useEditor,
+  uniqueId,
 } from "tldraw";
 
-const commentInProgress = atom<null | { x: number; y: number }>("commentInProgress", null);
+const commentInProgress = atom<null | { pageX: number; pageY: number }>("commentInProgress", null);
 
 export class CommentTool extends StateNode {
   static override id = "comment-tool";
 
   override onPointerDown(info: TLPointerEventInfo) {
-    console.log(info);
-    console.log("world");
-    const point = this.editor.inputs.currentPagePoint;
-    commentInProgress.set({ x: point.x, y: point.y });
+    if (!commentInProgress.get()) {
+      const point = this.editor.inputs.currentPagePoint;
+      commentInProgress.set({ pageX: point.x, pageY: point.y });
+    }
   }
 }
 
 export const CommentEntry = track(() => {
-  // const editor = useEditor();
+  const editor = useEditor();
 
   const [commentText, setCommentText] = useState("");
 
-  const pageCoordinates = commentInProgress.get();
+  const reset = () => {
+    setCommentText("");
+    commentInProgress.set(null);
+  };
 
-  if (!pageCoordinates) {
+  const pageCoordinates = commentInProgress.get();
+  const viewportCoordinates = pageCoordinates
+    ? editor.pageToViewport({ x: pageCoordinates.pageX, y: pageCoordinates.pageY })
+    : null;
+
+  const save = () => {
+    if (!pageCoordinates) {
+      return;
+    }
+    const currentPage = editor.getCurrentPage();
+    editor.updatePage({
+      id: currentPage.id,
+      meta: {
+        comments: [
+          ...((currentPage.meta.comments as any[]) || []),
+          {
+            id: uniqueId(),
+            // matches the horizontally centered display coordinate(s)
+            pageX: pageCoordinates.pageX,
+            pageY: pageCoordinates.pageY,
+            text: commentText,
+            author: editor.user.getName(),
+          },
+        ],
+      },
+    });
+    console.log("page", editor.getCurrentPage());
+    reset();
+  };
+
+  // these should either both or neither be null
+  if (!pageCoordinates || !viewportCoordinates) {
     return null;
   }
 
@@ -42,12 +78,15 @@ export const CommentEntry = track(() => {
       style={{
         position: "absolute",
         pointerEvents: "all",
-        top: pageCoordinates.y - 42,
-        left: pageCoordinates.x,
-        width: 100,
+        top: viewportCoordinates.y,
+        left: viewportCoordinates.x,
+        width: 200,
+        height: 150,
         display: "flex",
         justifyContent: "center",
-        alignItems: "center",
+        alignItems: "flex-end",
+        flexDirection: "column",
+        gap: 2,
       }}
       onPointerDown={(e) => e.stopPropagation()}
     >
@@ -57,14 +96,64 @@ export const CommentEntry = track(() => {
           display: "flex",
           boxShadow: "0 0 0 1px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.1)",
           background: "var(--color-panel)",
-          width: "fit-content",
           alignItems: "center",
+          width: "100%",
+          height: "100%",
         }}
       >
-        <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} />
+        <textarea
+          ref={(value) => {
+            // stupid hack, but it won't focus right away for some reason,
+            // including with the autoFocus prop
+            setTimeout(() => value?.focus(), 100);
+          }}
+          style={{ width: "100%", height: "100%", resize: "none" }}
+          value={commentText}
+          onChange={(e) => setCommentText(e.target.value)}
+        />
+      </div>
+      <div style={{ display: "flex", gap: 3 }}>
+        <button onClick={save}>Save</button>
+        <button onClick={reset}>Cancel</button>
       </div>
     </div>
   );
+});
+
+export const CommentDisplay = track(() => {
+  const editor = useEditor();
+
+  const comments = (editor.getCurrentPage().meta.comments || []) as {
+    id: string;
+    pageX: number;
+    pageY: number;
+    text: string;
+    author: string;
+  }[];
+
+  return comments.map((comment) => {
+    const screenCoords = editor.pageToViewport({ x: comment.pageX, y: comment.pageY });
+
+    return (
+      <div
+        key={comment.id}
+        style={{
+          position: "absolute",
+          pointerEvents: "none",
+          top: screenCoords.y,
+          left: screenCoords.x,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "flex-end",
+          flexDirection: "column",
+          gap: 2,
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {comment.text} - {comment.author}
+      </div>
+    );
+  });
 });
 
 export const ToolbarWithCommentTool: TLUiComponents["Toolbar"] = (props) => {

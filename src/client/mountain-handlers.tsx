@@ -123,15 +123,15 @@ export const MountainToolbar = track(() => {
     selected = Array.from(mountains)[0];
   }
 
-  const pageCoordinates = editor.pageToViewport(selectionRotatedPageBounds.point);
+  const viewportCoordinates = editor.pageToViewport(selectionRotatedPageBounds.point);
 
   return (
     <div
       style={{
         position: "absolute",
         pointerEvents: "all",
-        top: pageCoordinates.y - 42,
-        left: pageCoordinates.x,
+        top: viewportCoordinates.y - 42,
+        left: viewportCoordinates.x,
         width: selectionRotatedPageBounds.width * editor.getZoomLevel(),
         display: "flex",
         justifyContent: "center",

@@ -14,6 +14,7 @@ import { MountainToolbar, mountMountainsOnEditor } from "./mountain-handlers";
 import { BACKEND_URL, roomId } from "./config";
 import { multiplayerAssets, unfurlBookmarkUrl } from "./boilerplate";
 import {
+  CommentDisplay,
   CommentEntry,
   CommentTool,
   commentToolbarOverrides,
@@ -73,6 +74,7 @@ export function TLDrawCanvas({ username }: { username: string }) {
   const components: TLComponents = {
     InFrontOfTheCanvas: () => (
       <>
+        <CommentDisplay />
         <CommentEntry />
         <MountainToolbar />
       </>
