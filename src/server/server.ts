@@ -190,5 +190,8 @@ app.listen({ port: PORT, host: "0.0.0.0" }, (err) => {
     process.exit(1);
   }
 
-  console.log(`Server started on port ${PORT}`);
+  console.log(`Backend server started on port ${PORT}`);
+  if (DEV) {
+    console.log("Don't go there, though, go to port 5757 for Vite dev");
+  }
 });
