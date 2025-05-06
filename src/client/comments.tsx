@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import {
   atom,
@@ -85,6 +85,8 @@ export const CommentEntry = track(() => {
     commentInProgress.set(null);
   };
 
+  const textareaWasNullLastTime = useRef(true);
+
   // these should either both or neither be null
   if (!pageCoordinates || !viewportCoordinates) {
     return null;
@@ -104,6 +106,7 @@ export const CommentEntry = track(() => {
         flexDirection: "column",
         gap: 2,
         fontFamily: '"tldraw_draw", sans-serif',
+        zIndex: 1000000,
       }}
       onPointerDown={(e) => e.stopPropagation()}
     >
@@ -123,14 +126,21 @@ export const CommentEntry = track(() => {
           maxRows={5}
           value={editingText}
           ref={(el) => {
-            // stupid hack, but it won't focus right away for some reason,
-            // including with the autoFocus prop
-            setTimeout(() => {
-              if (el) {
-                el.focus();
-                el.selectionStart = el.value.length;
+            if (el) {
+              textareaWasNullLastTime.current = false;
+              if (textareaWasNullLastTime.current) {
+                // stupid hack, but it won't focus right away for some reason,
+                // including with the autoFocus prop
+                setTimeout(() => {
+                  if (el) {
+                    el.focus();
+                    el.selectionStart = el.value.length;
+                  }
+                }, 100);
               }
-            }, 100);
+            } else {
+              textareaWasNullLastTime.current = true;
+            }
           }}
           style={{ resize: "none", width: 175, scrollbarWidth: "thin" }}
           onChange={(e) => {
@@ -208,7 +218,7 @@ export const CommentDisplay = track(() => {
           top: screenCoords.y - (isThisOpen ? 10 : 7),
           left: screenCoords.x - 7,
           fontSize: isThisOpen ? undefined : 25,
-          zIndex: isThisOpen ? 10 : 9,
+          zIndex: isThisOpen ? 1000000 : 900000,
           border: "1px solid darkgray",
           fontFamily: '"tldraw_draw", sans-serif',
         }}
