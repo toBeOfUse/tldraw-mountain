@@ -4,22 +4,21 @@ import {
   DefaultColorThemePalette,
   DefaultMainMenu,
   DefaultMainMenuContent,
-  DefaultToolbar,
-  DefaultToolbarContent,
-  StateNode,
   TLComponents,
-  TLPointerEventInfo,
-  TLUiOverrides,
   Tldraw,
   TldrawUiMenuGroup,
   TldrawUiMenuItem,
-  useIsToolSelected,
-  useTools,
 } from "tldraw";
 
-import { ContextToolbarComponent, mountMountainsOnEditor } from "./mountain-handlers";
+import { MountainToolbar, mountMountainsOnEditor } from "./mountain-handlers";
 import { BACKEND_URL, roomId } from "./config";
 import { multiplayerAssets, unfurlBookmarkUrl } from "./boilerplate";
+import {
+  CommentEntry,
+  CommentTool,
+  commentToolbarOverrides,
+  ToolbarWithCommentTool,
+} from "./comments";
 
 // repurposing the "light-violet" palette option to match the continents in our bg
 DefaultColorThemePalette.lightMode["light-violet"].solid = "#e7e7e7";
@@ -62,15 +61,6 @@ function MainMenuWithLogout({ username }: { username: string }) {
   );
 }
 
-class CommentTool extends StateNode {
-  static override id = "comment-tool";
-
-  override onPointerDown(info: TLPointerEventInfo) {
-    console.log(info);
-    console.log("world");
-  }
-}
-
 export function TLDrawCanvas({ username }: { username: string }) {
   // Create a store connected to multiplayer.
   const store = useSync({
@@ -81,44 +71,14 @@ export function TLDrawCanvas({ username }: { username: string }) {
   });
 
   const components: TLComponents = {
-    InFrontOfTheCanvas: ContextToolbarComponent,
+    InFrontOfTheCanvas: () => (
+      <>
+        <CommentEntry />
+        <MountainToolbar />
+      </>
+    ),
     MainMenu: () => <MainMenuWithLogout username={username} />,
-    Toolbar: (props) => {
-      const tools = useTools();
-      const isCommentSelected = useIsToolSelected(tools["comment"]);
-      // take apart the DefaultToolbarContent component. illegal in 13 countries
-      // and disallowed under the geneva conventions, but it works
-      const defaultTools = DefaultToolbarContent().props.children;
-      return (
-        <DefaultToolbar {...props}>
-          {defaultTools.slice(0, 3)}
-          <TldrawUiMenuItem {...tools["comment"]} isSelected={isCommentSelected} />
-          {defaultTools.slice(4)}
-        </DefaultToolbar>
-      );
-    },
-  };
-
-  const overrides: TLUiOverrides = {
-    tools(editor, tools, helpers) {
-      tools.comment = {
-        id: "comment",
-        icon: "question-mark",
-        label: "tools.comment",
-        kbd: "c",
-        onSelect: () => {
-          // Whatever you want to happen when the tool is selected.
-          editor.setCurrentTool("comment-tool");
-          editor.setCursor({ type: "cross" });
-        },
-      };
-      return tools;
-    },
-    translations: {
-      en: {
-        "tools.comment": "Comment",
-      },
-    },
+    Toolbar: ToolbarWithCommentTool,
   };
 
   return (
@@ -142,7 +102,7 @@ export function TLDrawCanvas({ username }: { username: string }) {
           mountMountainsOnEditor(editor);
         }}
         tools={[CommentTool]}
-        overrides={overrides}
+        overrides={commentToolbarOverrides}
         components={components}
       />
     </div>

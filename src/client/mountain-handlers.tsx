@@ -106,7 +106,7 @@ export const mountMountainsOnEditor = (editor: Editor) => {
   });
 };
 
-export const ContextToolbarComponent = track(() => {
+export const MountainToolbar = track(() => {
   const editor = useEditor();
   const showToolbar =
     editor.isIn("select.idle") &&
