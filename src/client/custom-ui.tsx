@@ -73,9 +73,9 @@ export function TLDrawCanvas({ username }: { username: string }) {
   });
 
   const components: TLComponents = {
+    OnTheCanvas: CommentDisplay,
     InFrontOfTheCanvas: () => (
       <>
-        <CommentDisplay />
         <CommentEntry />
         <MountainToolbar />
       </>

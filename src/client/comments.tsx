@@ -186,7 +186,7 @@ export const CommentDisplay = track(() => {
   }, []);
 
   return comments.map((comment) => {
-    const screenCoords = editor.pageToViewport({ x: comment.pageX, y: comment.pageY });
+    const screenCoords = { x: comment.pageX, y: comment.pageY };
     const isThisOpen = openComments.get().includes(comment.id);
     return (
       <div
@@ -201,13 +201,13 @@ export const CommentDisplay = track(() => {
           alignItems: "center",
           flexDirection: "column",
           gap: 2,
-          borderRadius: 10,
-          width: isThisOpen ? undefined : 20,
-          height: isThisOpen ? undefined : 20,
+          borderRadius: isThisOpen ? 10 : 20,
+          width: isThisOpen ? undefined : 30,
+          height: isThisOpen ? undefined : 30,
           // feeble attempt to center on where the user clicked
           top: screenCoords.y - (isThisOpen ? 10 : 7),
           left: screenCoords.x - 7,
-          fontSize: isThisOpen ? undefined : 16,
+          fontSize: isThisOpen ? undefined : 25,
           zIndex: isThisOpen ? 10 : 9,
           border: "1px solid darkgray",
           fontFamily: '"tldraw_draw", sans-serif',
