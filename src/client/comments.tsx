@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import {
   atom,
@@ -21,7 +21,12 @@ import {
   DefaultContextMenuContent,
 } from "tldraw";
 
-const commentInProgress = atom<null | { pageX: number; pageY: number }>("commentInProgress", null);
+const commentInProgress = atom<null | {
+  pageX: number;
+  pageY: number;
+  text: string;
+  editing: boolean;
+}>("commentInProgress", null);
 
 export class CommentTool extends StateNode {
   static override id = "comment-tool";
@@ -29,7 +34,7 @@ export class CommentTool extends StateNode {
   override onPointerDown(info: TLPointerEventInfo) {
     if (!commentInProgress.get()) {
       const point = this.editor.inputs.currentPagePoint;
-      commentInProgress.set({ pageX: point.x, pageY: point.y });
+      commentInProgress.set({ pageX: point.x, pageY: point.y, text: "", editing: false });
     }
   }
 }
@@ -39,10 +44,12 @@ const openComments = atom("openComments", [] as string[]);
 export const CommentEntry = track(() => {
   const editor = useEditor();
 
-  const [commentText, setCommentText] = useState("");
+  const editingText = commentInProgress.get()?.text || "";
 
   const reset = () => {
-    setCommentText("");
+    if (commentInProgress.get()?.text) {
+      save();
+    }
     commentInProgress.set(null);
   };
 
@@ -67,14 +74,14 @@ export const CommentEntry = track(() => {
             // matches the horizontally centered display coordinate(s)
             pageX: pageCoordinates.pageX,
             pageY: pageCoordinates.pageY,
-            text: commentText,
+            text: editingText,
             author: editor.user.getName(),
           },
         ],
       },
     });
     openComments.set([...openComments.get(), newCommentId]);
-    reset();
+    commentInProgress.set(null);
   };
 
   // these should either both or neither be null
@@ -112,14 +119,24 @@ export const CommentEntry = track(() => {
         <TextareaAutosize
           minRows={1}
           maxRows={5}
-          value={commentText}
-          ref={(value) => {
+          value={editingText}
+          ref={(el) => {
             // stupid hack, but it won't focus right away for some reason,
             // including with the autoFocus prop
-            setTimeout(() => value?.focus(), 100);
+            setTimeout(() => {
+              if (el) {
+                el.focus();
+                el.selectionStart = el.value.length;
+              }
+            }, 100);
           }}
           style={{ resize: "none", width: 175 }}
-          onChange={(e) => setCommentText(e.target.value)}
+          onChange={(e) => {
+            const commentData = commentInProgress.get();
+            if (commentData) {
+              commentInProgress.set({ ...commentData, text: e.target.value });
+            }
+          }}
           onKeyDown={(event) => {
             if (event.ctrlKey && event.key === "Enter") {
               save();
@@ -137,18 +154,21 @@ export const CommentEntry = track(() => {
   );
 });
 
+// i think there's a way to add this to tldraw's page type somehow
+type Comment = {
+  id: string;
+  pageX: number;
+  pageY: number;
+  text: string;
+  author: string;
+};
+
 const commentTargetedByRightClick = atom("commentTargetedByRightClick", "");
 
 export const CommentDisplay = track(() => {
   const editor = useEditor();
 
-  const comments = (editor.getCurrentPage().meta.comments || []) as {
-    id: string;
-    pageX: number;
-    pageY: number;
-    text: string;
-    author: string;
-  }[];
+  const comments = (editor.getCurrentPage().meta.comments || []) as Comment[];
 
   useEffect(() => {
     const closeAll = (event: TLEventInfo) => {
@@ -172,7 +192,7 @@ export const CommentDisplay = track(() => {
         className="custom-comment"
         style={{
           position: "absolute",
-          background: "#f1f1f1",
+          background: "white",
           cursor: "pointer",
           top: screenCoords.y,
           left: screenCoords.x,
@@ -185,6 +205,7 @@ export const CommentDisplay = track(() => {
           width: isThisOpen ? undefined : 20,
           height: isThisOpen ? undefined : 20,
           fontSize: isThisOpen ? undefined : 16,
+          zIndex: isThisOpen ? 10 : 9,
           border: "1px solid darkgray",
           fontFamily: '"tldraw_draw", sans-serif',
         }}
@@ -200,7 +221,6 @@ export const CommentDisplay = track(() => {
           } else if (e.pointerType === "mouse") {
             commentTargetedByRightClick.set(comment.id);
             editor.once("event", (event) => {
-              console.log(event);
               if (event.name === "pointer_up") {
                 commentTargetedByRightClick.set("");
               }
@@ -221,31 +241,54 @@ export const CommentDisplay = track(() => {
   });
 });
 
-export const ContextMenuWithCommentDelete = track((props: TLUiContextMenuProps) => {
-  const commentIdToDelete = commentTargetedByRightClick.get();
+export const ContextMenuWithCommentEdit = track((props: TLUiContextMenuProps) => {
+  const commentId = commentTargetedByRightClick.get();
   const editor = useEditor();
+  const deleteTargetedComment = () => {
+    const currentPage = editor.getCurrentPage();
+    editor.updatePage({
+      id: currentPage.id,
+      meta: {
+        comments: ((currentPage.meta.comments as any[]) || []).filter(
+          (comment) => comment.id != commentId
+        ),
+      },
+    });
+    commentTargetedByRightClick.set("");
+  };
 
   return (
     <DefaultContextMenu {...props}>
-      {!!commentIdToDelete && (
+      {!!commentId && (
         <TldrawUiMenuGroup id="delete-comment">
           <div>
+            <TldrawUiMenuItem
+              id="edit-comment-item"
+              label="Edit comment"
+              icon="edit"
+              onSelect={() => {
+                // editing is achieved by deleting the comment, then opening the
+                // editor window for another one in the same spot that starts
+                // with the same text
+                const targetedCommentData = (
+                  (editor.getCurrentPage().meta.comments as Comment[]) || []
+                ).find((comment) => comment.id === commentId);
+                deleteTargetedComment();
+                if (targetedCommentData) {
+                  commentInProgress.set({
+                    pageX: targetedCommentData.pageX,
+                    pageY: targetedCommentData.pageY,
+                    text: targetedCommentData.text,
+                    editing: true,
+                  });
+                }
+              }}
+            />
             <TldrawUiMenuItem
               id="delete-comment-item"
               label="Delete comment"
               icon="trash"
-              onSelect={() => {
-                const currentPage = editor.getCurrentPage();
-                editor.updatePage({
-                  id: currentPage.id,
-                  meta: {
-                    comments: ((currentPage.meta.comments as any[]) || []).filter(
-                      (comment) => comment.id != commentIdToDelete
-                    ),
-                  },
-                });
-                commentTargetedByRightClick.set("");
-              }}
+              onSelect={deleteTargetedComment}
             />
           </div>
         </TldrawUiMenuGroup>

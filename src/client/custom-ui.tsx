@@ -18,7 +18,7 @@ import {
   CommentEntry,
   CommentTool,
   commentToolbarOverrides,
-  ContextMenuWithCommentDelete,
+  ContextMenuWithCommentEdit,
   ToolbarWithCommentTool,
 } from "./comments";
 
@@ -82,7 +82,7 @@ export function TLDrawCanvas({ username }: { username: string }) {
     ),
     MainMenu: () => <MainMenuWithLogout username={username} />,
     Toolbar: ToolbarWithCommentTool,
-    ContextMenu: ContextMenuWithCommentDelete,
+    ContextMenu: ContextMenuWithCommentEdit,
   };
 
   return (
