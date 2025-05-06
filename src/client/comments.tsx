@@ -26,6 +26,7 @@ const commentInProgress = atom<null | {
   pageY: number;
   text: string;
   editing: boolean;
+  textBeforeEditing?: string;
 }>("commentInProgress", null);
 
 export class CommentTool extends StateNode {
@@ -47,8 +48,8 @@ export const CommentEntry = track(() => {
   const editingText = commentInProgress.get()?.text || "";
 
   const reset = () => {
-    if (commentInProgress.get()?.text) {
-      save();
+    if (commentInProgress.get()?.editing) {
+      save(commentInProgress.get()?.textBeforeEditing || "");
     }
     commentInProgress.set(null);
   };
@@ -58,7 +59,7 @@ export const CommentEntry = track(() => {
     ? editor.pageToViewport({ x: pageCoordinates.pageX, y: pageCoordinates.pageY })
     : null;
 
-  const save = () => {
+  const save = (text: string) => {
     if (!pageCoordinates) {
       return;
     }
@@ -74,7 +75,7 @@ export const CommentEntry = track(() => {
             // matches the horizontally centered display coordinate(s)
             pageX: pageCoordinates.pageX,
             pageY: pageCoordinates.pageY,
-            text: editingText,
+            text,
             author: editor.user.getName(),
           },
         ],
@@ -94,8 +95,9 @@ export const CommentEntry = track(() => {
       style={{
         position: "absolute",
         pointerEvents: "all",
-        top: viewportCoordinates.y,
-        left: viewportCoordinates.x,
+        // feeble attempt to vertically center the text area on the mouse click
+        top: viewportCoordinates.y - 10,
+        left: viewportCoordinates.x - 5,
         display: "flex",
         justifyContent: "center",
         alignItems: "flex-end",
@@ -130,7 +132,7 @@ export const CommentEntry = track(() => {
               }
             }, 100);
           }}
-          style={{ resize: "none", width: 175 }}
+          style={{ resize: "none", width: 175, scrollbarWidth: "thin" }}
           onChange={(e) => {
             const commentData = commentInProgress.get();
             if (commentData) {
@@ -139,7 +141,7 @@ export const CommentEntry = track(() => {
           }}
           onKeyDown={(event) => {
             if (event.ctrlKey && event.key === "Enter") {
-              save();
+              save(editingText);
             } else if (event.key === "Escape") {
               reset();
             }
@@ -148,7 +150,7 @@ export const CommentEntry = track(() => {
       </div>
       <div style={{ display: "flex", gap: 3 }}>
         <button onClick={reset}>Cancel</button>
-        <button onClick={save}>Save</button>
+        <button onClick={() => save(editingText)}>Save</button>
       </div>
     </div>
   );
@@ -194,8 +196,6 @@ export const CommentDisplay = track(() => {
           position: "absolute",
           background: "white",
           cursor: "pointer",
-          top: screenCoords.y,
-          left: screenCoords.x,
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
@@ -204,6 +204,9 @@ export const CommentDisplay = track(() => {
           borderRadius: 10,
           width: isThisOpen ? undefined : 20,
           height: isThisOpen ? undefined : 20,
+          // feeble attempt to center on where the user clicked
+          top: screenCoords.y - (isThisOpen ? 10 : 7),
+          left: screenCoords.x - 7,
           fontSize: isThisOpen ? undefined : 16,
           zIndex: isThisOpen ? 10 : 9,
           border: "1px solid darkgray",
@@ -280,6 +283,7 @@ export const ContextMenuWithCommentEdit = track((props: TLUiContextMenuProps) =>
                     pageY: targetedCommentData.pageY,
                     text: targetedCommentData.text,
                     editing: true,
+                    textBeforeEditing: targetedCommentData.text,
                   });
                 }
               }}
