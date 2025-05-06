@@ -127,14 +127,15 @@ export const CommentEntry = track(() => {
           value={editingText}
           ref={(el) => {
             if (el) {
-              textareaWasNullLastTime.current = false;
+              // this doesn't really stop it from calling el.focus() as often as
+              // it wants
               if (textareaWasNullLastTime.current) {
+                textareaWasNullLastTime.current = false;
                 // stupid hack, but it won't focus right away for some reason,
                 // including with the autoFocus prop
                 setTimeout(() => {
                   if (el) {
                     el.focus();
-                    el.selectionStart = el.value.length;
                   }
                 }, 100);
               }
