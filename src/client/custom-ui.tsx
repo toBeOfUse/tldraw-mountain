@@ -10,11 +10,11 @@ import {
   TldrawUiMenuItem,
 } from "tldraw";
 
-import { MountainToolbar, mountMountainsOnEditor } from "./mountain-handlers";
+import { MountainToolbar, mountMountainsOnEditor } from "./mountains";
 import { BACKEND_URL, roomId } from "./config";
 import { multiplayerAssets, unfurlBookmarkUrl } from "./boilerplate";
 import {
-  CommentDisplay,
+  CommentLayer,
   CommentEntry,
   CommentTool,
   commentToolbarOverrides,
@@ -30,6 +30,8 @@ DefaultColorThemePalette.darkMode["light-violet"].solid = "#e7e7e7";
 DefaultColorThemePalette.darkMode["light-violet"].fill = "#e7e7e7";
 DefaultColorThemePalette.darkMode["light-violet"].semi = "#e7e7e7";
 
+// lightly customized version of the top left dropdown menu that adds user
+// session functionality
 function MainMenuWithLogout({ username }: { username: string }) {
   return (
     <DefaultMainMenu>
@@ -63,6 +65,7 @@ function MainMenuWithLogout({ username }: { username: string }) {
   );
 }
 
+// primary component of the whole app
 export function TLDrawCanvas({ username }: { username: string }) {
   // Create a store connected to multiplayer.
   const store = useSync({
@@ -73,7 +76,7 @@ export function TLDrawCanvas({ username }: { username: string }) {
   });
 
   const components: TLComponents = {
-    OnTheCanvas: CommentDisplay,
+    OnTheCanvas: CommentLayer,
     InFrontOfTheCanvas: () => (
       <>
         <CommentEntry />

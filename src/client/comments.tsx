@@ -21,26 +21,8 @@ import {
   Editor,
 } from "tldraw";
 
-const commentInProgress = atom<null | {
-  pageX: number;
-  pageY: number;
-  text: string;
-  editing: boolean;
-  textBeforeEditing?: string;
-}>("commentInProgress", null);
-
-export class CommentTool extends StateNode {
-  static override id = "comment";
-
-  override onPointerDown(info: TLPointerEventInfo) {
-    if (!commentInProgress.get()) {
-      const point = this.editor.inputs.currentPagePoint;
-      commentInProgress.set({ pageX: point.x, pageY: point.y, text: "", editing: false });
-    }
-  }
-}
-
-// i think there's a way to add this to tldraw's page type somehow
+// main data type of this whole thing. objects of this type are persisted to the
+// `meta` property of TLPage objects
 type Comment = {
   id: string;
   pageX: number;
@@ -49,6 +31,73 @@ type Comment = {
   author: string;
 };
 
+type CommentInProgress = Omit<Comment, "id" | "author"> & {
+  // the `editing` property indicates if we are editing an existing comment
+  editing: boolean;
+  // if `editing` is true, this stores the original text of the comment that is
+  // currently being edited, so that we can revert back to it if the user
+  // cancels the edit
+  textBeforeEditing?: string;
+};
+
+// global state to store the comment that is currently being edited or created.
+// (this data will be persisted to the current page when saved)
+const commentInProgress = atom<null | CommentInProgress>("commentInProgress", null);
+
+// class that controls how the "comment" tool that is added to the primary
+// bottom toolbar works
+export class CommentTool extends StateNode {
+  static override id = "comment";
+
+  override onPointerDown(info: TLPointerEventInfo) {
+    // TODO: somehow avoid doing this if this is more of a pan/zoom/drag kinda
+    // deal. the normal tools do a reasonably good job of ignoring those kinds
+    // of gestures
+    if (!commentInProgress.get()) {
+      const point = this.editor.inputs.currentPagePoint;
+      commentInProgress.set({ pageX: point.x, pageY: point.y, text: "", editing: false });
+    }
+  }
+}
+
+// this is a custom version of the primary bottom center TLDraw toolbar
+export const ToolbarWithCommentTool: TLUiComponents["Toolbar"] = track((props) => {
+  // take apart the DefaultToolbarContent component. illegal in 13 countries and
+  // disallowed under the geneva conventions, but it works for stateless components
+  const defaultTools = DefaultToolbarContent().props.children;
+  return (
+    <DefaultToolbar {...props}>
+      {defaultTools.slice(0, 3)}
+      <ToolbarItem tool="comment" />
+      {defaultTools.slice(4)}
+    </DefaultToolbar>
+  );
+});
+
+// one more thing that's needed to register a tool with tldraw
+export const commentToolbarOverrides: TLUiOverrides = {
+  tools(editor, tools, helpers) {
+    tools.comment = {
+      id: "comment",
+      icon: "plus",
+      label: "tools.comment",
+      kbd: "c",
+      onSelect: () => {
+        // Whatever you want to happen when the tool is selected.
+        editor.setCurrentTool("comment");
+        editor.setCursor({ type: "cross" });
+      },
+    };
+    return tools;
+  },
+  translations: {
+    en: {
+      "tools.comment": "Comment",
+    },
+  },
+};
+
+// data bus for comments
 const CommentStorage = {
   addComment(editor: Editor, comment: Omit<Comment, "id">) {
     const currentPage = editor.getCurrentPage();
@@ -97,8 +146,13 @@ const CommentStorage = {
   },
 };
 
+// global state that stores the ids of comments that currently have their full
+// text displayed
 const openComments = atom("openComments", [] as string[]);
 
+// component that displays a text input that lets the user write or edit a
+// comment. uses commentInProgress as its state and persists results with
+// CommentStorage.
 export const CommentEntry = track(() => {
   const editor = useEditor();
 
@@ -213,8 +267,15 @@ export const CommentEntry = track(() => {
   );
 });
 
+// global state storing the id of the comment that was most recently
+// right-clicked on. i wanted to receive right-click events in the
+// CommentComponent, but the ContextMenuWithCommentEdit component is what needs
+// to know which comment should be edited or deleted when its context menu items
+// are selected; the best way i came up with was to have them both use this
+// thing, which acts like parent state or context to both of them
 const commentTargetedByRightClick = atom("commentTargetedByRightClick", "");
 
+// this displays saved comments and opens/closes them and lets them be dragged around
 export const CommentComponent = track(
   ({ comment, isThisOpen }: { comment: Comment; isThisOpen: boolean }) => {
     const editor = useEditor();
@@ -258,10 +319,10 @@ export const CommentComponent = track(
             if (e.pointerType !== "mouse" || e.button === 0) {
               if (event.name === "pointer_move") {
                 const zoomLevel = editor.getZoomLevel();
-                // you can only learn it by reading their code, but event.point is
-                // based on .clientX and .clientY, just like how i made
-                // dragStartPoint. we just need to scale the offset to match the
-                // zoom level of the page
+                // you can only learn it by reading their code, but event.point
+                // is based on .clientX and .clientY, just like dragStartPoint.
+                // we just need to scale the offset to match the zoom level of
+                // the page
                 setDragOffset({
                   x: (event.point.x - dragStartPoint.current.x) / zoomLevel,
                   y: (event.point.y - dragStartPoint.current.y) / zoomLevel,
@@ -327,7 +388,8 @@ export const CommentComponent = track(
   }
 );
 
-export const CommentDisplay = track(() => {
+// displays components for all the saved comments
+export const CommentLayer = track(() => {
   const editor = useEditor();
 
   const comments = (editor.getCurrentPage().meta.comments || []) as Comment[];
@@ -372,6 +434,8 @@ export const ContextMenuWithCommentEdit = track((props: TLUiContextMenuProps) =>
                 // editing is achieved by deleting the comment, then opening the
                 // editor window for another one in the same spot that starts
                 // with the same text
+                // TODO: probably don't do this since it doesn't preserve
+                // original authorship
                 const targetedCommentData = (
                   (editor.getCurrentPage().meta.comments as Comment[]) || []
                 ).find((comment) => comment.id === commentId);
@@ -400,38 +464,3 @@ export const ContextMenuWithCommentEdit = track((props: TLUiContextMenuProps) =>
     </DefaultContextMenu>
   );
 });
-
-export const ToolbarWithCommentTool: TLUiComponents["Toolbar"] = track((props) => {
-  // take apart the DefaultToolbarContent component. illegal in 13 countries
-  // and disallowed under the geneva conventions, but it works
-  const defaultTools = DefaultToolbarContent().props.children;
-  return (
-    <DefaultToolbar {...props}>
-      {defaultTools.slice(0, 3)}
-      <ToolbarItem tool="comment" />
-      {defaultTools.slice(4)}
-    </DefaultToolbar>
-  );
-});
-
-export const commentToolbarOverrides: TLUiOverrides = {
-  tools(editor, tools, helpers) {
-    tools.comment = {
-      id: "comment",
-      icon: "plus",
-      label: "tools.comment",
-      kbd: "c",
-      onSelect: () => {
-        // Whatever you want to happen when the tool is selected.
-        editor.setCurrentTool("comment");
-        editor.setCursor({ type: "cross" });
-      },
-    };
-    return tools;
-  },
-  translations: {
-    en: {
-      "tools.comment": "Comment",
-    },
-  },
-};

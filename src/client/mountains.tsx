@@ -47,7 +47,7 @@ export const addMountainPseudoElements = (editor: Editor) => {
                 z-index: 100000;
                 left: -50px;
                 top: 50%;
-        transform: translateY(-55%);
+                transform: translateY(-55%);
                 display: block;
                 width: 40px;
                 height: 50px;
