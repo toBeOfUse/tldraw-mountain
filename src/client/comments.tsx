@@ -301,7 +301,10 @@ export const CommentComponent = track(
           // feeble attempt to center on where the user clicked
           top: comment.pageY + dragOffset.y - (isThisOpen ? 10 : 7),
           left: comment.pageX + dragOffset.x - 7,
-          fontSize: isThisOpen ? undefined : 25,
+          // if it's open, the font size is a little smaller than the built-in
+          // tldraw "small" font size. if it's closed, the single letter that's
+          // shown is about the same as the "medium" font size
+          fontSize: isThisOpen ? 15 : 25,
           zIndex: isThisOpen ? 1000000 : 900000,
           border: "1px solid darkgray",
           fontFamily: '"tldraw_draw", sans-serif',
