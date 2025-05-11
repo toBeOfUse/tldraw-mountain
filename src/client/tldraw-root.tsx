@@ -1,3 +1,8 @@
+/**
+ * This file is responsible for integrating custom features into the actual
+ * TLDraw component and configuration.
+ */
+
 import { useSync } from "@tldraw/sync";
 
 import {
@@ -11,8 +16,7 @@ import {
 } from "tldraw";
 
 import { MountainToolbar, mountMountainsOnEditor } from "./mountains";
-import { BACKEND_URL, roomId } from "./config";
-import { multiplayerAssets, unfurlBookmarkUrl } from "./boilerplate";
+import { multiplayerAssets, unfurlBookmarkUrl, BACKEND_URL, roomId } from "./boilerplate";
 import {
   CommentLayer,
   CommentEntry,

@@ -1,5 +1,13 @@
+// boring stuff
+
 import { AssetRecordType, getHashForString, TLAssetStore, TLBookmarkAsset, uniqueId } from "tldraw";
-import { BACKEND_URL } from "./config";
+
+export const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}${
+  window.location.protocol === "http:" ? ":5858" : ""
+}`;
+
+// single-room setup with hardcoded id
+export const roomId = "test-room";
 
 // How does our server handle assets like images and videos?
 export const multiplayerAssets: TLAssetStore = {

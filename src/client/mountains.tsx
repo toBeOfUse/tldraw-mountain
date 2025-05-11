@@ -1,4 +1,4 @@
-// this is all incredibly stupid
+// custom mountains ui. this is all incredibly stupid
 
 import valleyDataUrl from "./assets/valley.svg?base64";
 import mountainDataUrl from "./assets/mountain.svg?base64";
@@ -9,6 +9,7 @@ import valley from "./assets/valley.svg";
 import mountain from "./assets/mountain.svg";
 import mountainHalf from "./assets/mountain-half.svg";
 import mountainFull from "./assets/mountain-full.svg";
+
 import { Editor, TextShapeUtil, TldrawUiIcon, track, useEditor } from "tldraw";
 
 // TODO: adjust handle geometry to allow for dragging the mountain itself around

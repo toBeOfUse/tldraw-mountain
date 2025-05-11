@@ -34,7 +34,7 @@ export async function makeOrLoadRoom(roomId: string) {
   mutex = mutex
     .then(async () => {
       if (rooms.has(roomId)) {
-        const roomState = await rooms.get(roomId)!;
+        const roomState = rooms.get(roomId)!;
         if (!roomState.room.isClosed()) {
           return null; // all good
         }

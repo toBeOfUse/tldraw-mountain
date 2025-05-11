@@ -1,3 +1,5 @@
+// custom comments ui
+
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import {
@@ -157,7 +159,7 @@ const CommentStorage = {
 const openComments = atom("openComments", [] as string[]);
 
 // component that displays a text input that lets the user write or edit a
-// comment. uses commentInProgress as its state and persists results with
+// comment. uses commentInProgress as its state and persists results to
 // CommentStorage.
 export const CommentEntry = track(() => {
   const editor = useEditor();

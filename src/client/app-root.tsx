@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
-import { TLDrawCanvas } from "./custom-ui";
-import { BACKEND_URL } from "./config";
+import React, { useEffect, useState } from "react";
+import { TLDrawCanvas } from "./tldraw-root";
+import { BACKEND_URL } from "./boilerplate";
+import ReactDOM from "react-dom/client";
+import "./index.css";
 
 /**
- * Controls our single page. Really just handles authentication.
+ * Controls our single page. Handles authentication and renders the TLDraw
+ * canvas if it's successful.
  */
 function App() {
   // null means this is still loading; false means authentication failed; string
@@ -36,4 +39,8 @@ function App() {
   }
 }
 
-export default App;
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
