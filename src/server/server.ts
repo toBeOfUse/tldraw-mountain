@@ -119,6 +119,9 @@ app.get("/isauthenticated", (req, reply) => {
 app.register(async (app) => {
   // This is the main entrypoint for the multiplayer sync
   app.get("/connect/:roomId", { websocket: true }, async (socket, req) => {
+    // authentication is checked for this endpoint by the preValidation hook
+    // defined in the oauth section
+
     // The roomId comes from the URL pathname
     const roomId = (req.params as any).roomId as string;
     // The sessionId is passed from the client as a query param,
@@ -155,11 +158,17 @@ app.register(async (app) => {
   // But first we need to allow all content types with no parsing, so we can handle raw data
   app.addContentTypeParser("*", (_, __, done) => done(null));
   app.put("/uploads/:id", {}, async (req, res) => {
+    if (!getCurrentUser(req)) {
+      return res.code(400).send("no");
+    }
     const id = (req.params as any).id as string;
     await storeAsset(id, req.raw);
     res.send({ ok: true });
   });
   app.get("/uploads/:id", async (req, res) => {
+    if (!getCurrentUser(req)) {
+      return res.code(400).send("no");
+    }
     const id = (req.params as any).id as string;
     const data = await loadAsset(id);
     if (isSvg(data.toString("utf-8"))) {
@@ -179,6 +188,9 @@ app.register(async (app) => {
 
   // To enable unfurling of bookmarks, we add a simple endpoint that takes a URL query param
   app.get("/unfurl", async (req, res) => {
+    if (!getCurrentUser(req)) {
+      return res.code(400).send("no");
+    }
     const url = (req.query as any).url as string;
     res.send(await unfurl(url));
   });
