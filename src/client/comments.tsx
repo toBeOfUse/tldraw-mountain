@@ -99,6 +99,12 @@ export const commentToolbarOverrides: TLUiOverrides = {
 
 // data bus for comments
 const CommentStorage = {
+  // it's kind of lame to pass in `editor` to every single one of these
+  // functions - it could be wrapped in a hook that calls useEditor() for use in
+  // components, or we could just make the editor a global variable
+  getComments(editor: Editor) {
+    return (editor.getCurrentPage().meta.comments || []) as Comment[];
+  },
   addComment(editor: Editor, comment: Omit<Comment, "id">) {
     const currentPage = editor.getCurrentPage();
     const newCommentId = uniqueId();
@@ -341,7 +347,7 @@ export const CommentComponent = track(
                 // this if condition is mostly to deal with react strict mode
                 // calling this callback twice. react strict mode, i defy you
                 if (isBeingDragged.current) {
-                  if (Math.abs(current.x) < 5 && Math.abs(current.y) < 5) {
+                  if (Math.abs(current.x) < 0.1 && Math.abs(current.y) < 0.1) {
                     handleClick();
                   } else {
                     CommentStorage.updateComment(editor, comment.id, {
@@ -394,8 +400,7 @@ export const CommentComponent = track(
 // displays components for all the saved comments
 export const CommentLayer = track(() => {
   const editor = useEditor();
-
-  const comments = (editor.getCurrentPage().meta.comments || []) as Comment[];
+  const comments = CommentStorage.getComments(editor);
 
   useEffect(() => {
     const closeAll = (event: TLEventInfo) => {
@@ -439,9 +444,9 @@ export const ContextMenuWithCommentEdit = track((props: TLUiContextMenuProps) =>
                 // with the same text
                 // TODO: probably don't do this since it doesn't preserve
                 // original authorship
-                const targetedCommentData = (
-                  (editor.getCurrentPage().meta.comments as Comment[]) || []
-                ).find((comment) => comment.id === commentId);
+                const targetedCommentData = CommentStorage.getComments(editor).find(
+                  (comment) => comment.id === commentId
+                );
                 deleteTargetedComment();
                 if (targetedCommentData) {
                   commentInProgress.set({
